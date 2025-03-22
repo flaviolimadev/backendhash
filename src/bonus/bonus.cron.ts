@@ -12,7 +12,7 @@ export class BonusCronService {
   // Mapeamento de percentual por nível
   private percentByLevel = [10, 4, 3, 2, 1, 1, 1, 1, 1, 1];
 
-  @Cron('*/30 * * * * *')
+  @Cron('*/60 * * * * *')
   async processBonuses() {
     this.logger.log('🔁 Verificando depósitos para bonificação...');
 
@@ -28,58 +28,68 @@ export class BonusCronService {
       return;
     }
 
+    if (!deposits || deposits.length === 0) {
+      this.logger.log('Nenhum depósito a bonificar no momento.');
+      return;
+    }
+
     for (const deposit of deposits) {
-      const depositValue = deposit.value;
-      let currentProfileId = deposit.profile_id;
-      let currentLevel = 0;
+      try {
+        const depositValue = deposit.value;
+        let currentProfileId = deposit.profile_id;
+        let currentLevel = 0;
 
-      while (currentLevel < 10) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, referred_by, balance')
-          .eq('id', currentProfileId)
-          .single();
+        while (currentLevel < 10) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('id, referred_by, balance')
+            .eq('id', currentProfileId)
+            .maybeSingle();
 
-        if (profileError || !profileData || !profileData.referred_by) {
-          break; // Se não tiver mais quem indicou, para
+          if (profileError || !profileData || !profileData.referred_by) {
+            break;
+          }
+
+          const referrerId = profileData.referred_by;
+          const percent = this.percentByLevel[currentLevel];
+          const bonusValue = Math.floor(depositValue * (percent / 100));
+
+          const { error: updateError } = await supabase.rpc('increment_balance', {
+            user_id: referrerId,
+            amount: bonusValue,
+          });
+
+          if (updateError) {
+            this.logger.error(`Erro ao atualizar saldo do usuário ${referrerId}:`, updateError);
+          } else {
+            await supabase.from('extrato').insert({
+              profile_id: referrerId,
+              ciclo_id: null,
+              type: currentLevel === 0 ? 2 : 3,
+              value: bonusValue,
+              status: 1,
+            });
+
+            this.logger.log(`💰 Bônus de R$${bonusValue / 100} atribuído a ${referrerId} (nível ${currentLevel + 1})`);
+          }
+
+          currentProfileId = referrerId;
+          currentLevel++;
         }
 
-        const referrerId = profileData.referred_by;
-        const percent = this.percentByLevel[currentLevel];
-        const bonusValue = Math.floor(depositValue * (percent / 100));
+        const { error: statusUpdateError } = await supabase
+          .from('depositos')
+          .update({ status: 2 })
+          .eq('id', deposit.id);
 
-        // Atualizar saldo do usuário que vai receber o bônus
-        const { error: updateError } = await supabase.rpc('increment_balance', {
-          user_id: referrerId,
-          amount: bonusValue,
-        });
-
-        if (updateError) {
-          this.logger.error(`Erro ao atualizar saldo do usuário ${referrerId}:`, updateError);
+        if (statusUpdateError) {
+          this.logger.error(`Erro ao atualizar status do depósito ${deposit.id}:`, statusUpdateError);
+        } else {
+          this.logger.log(`✅ Bonificações processadas para depósito ${deposit.id}`);
         }
-
-        // Inserir registro no extrato
-        await supabase.from('extrato').insert({
-          profile_id: referrerId,
-          ciclo_id: null,
-          type: currentLevel === 0 ? 2 : 3, // 2 = direta, 3 = indireta
-          value: bonusValue,
-          status: 1,
-        });
-
-        this.logger.log(`💰 Bônus de R$${bonusValue / 100} atribuído a ${referrerId} (nível ${currentLevel + 1})`);
-
-        currentProfileId = referrerId;
-        currentLevel++;
+      } catch (err) {
+        this.logger.error(`Erro geral ao processar depósito ${deposit.id}:`, err);
       }
-
-      // Atualizar status do depósito para 2 (bonificação concluída)
-      await supabase
-        .from('depositos')
-        .update({ status: 2 })
-        .eq('id', deposit.id);
-
-      this.logger.log(`✅ Bonificações processadas para depósito ${deposit.id}`);
     }
   }
 }

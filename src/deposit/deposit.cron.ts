@@ -5,11 +5,11 @@ import { SupabaseService } from '../supabase/supabase.service';
 import axios from 'axios';
 
 interface PixStatusResponse {
-    txid: string;
-    status: string;
-    pixCopiaECola?: string;
-    qrCode?: string;
-  }
+  txid: string;
+  status: string;
+  pixCopiaECola?: string;
+  qrCode?: string;
+}
 
 @Injectable()
 export class DepositCronService {
@@ -22,7 +22,7 @@ export class DepositCronService {
   async checkPendingPixDeposits() {
     this.logger.log('Verificando depósitos PIX pendentes...');
 
-    // 1. Buscar depósitos com type = 1 (PIX) e status = 0 (pendente)
+    // Buscar depósitos com type = 1 (PIX) e status = 0 (pendente)
     const { data: deposits, error } = await this.supabaseService.getClient()
       .from('depositos')
       .select('*')
@@ -54,23 +54,45 @@ export class DepositCronService {
         const status = response.data.status;
 
         if (status === 'pago') {
+          const supabase = this.supabaseService.getClient();
+
           // Atualiza o status do depósito para 1 (concluído)
-          await this.supabaseService.getClient()
+          await supabase
             .from('depositos')
             .update({ status: 1 })
             .eq('txid', txid);
 
-            // Cria um novo ciclo
-            await this.supabaseService.getClient()
+          // Cria o ciclo
+          const { data: ciclo, error: cicloError } = await supabase
             .from('ciclos')
-            .insert([{
+            .insert([
+              {
                 profile_id: deposit.profile_id,
                 nivel: 1,
                 value: deposit.value,
-                status: 1
-            }]);
+                status: 1,
+              },
+            ])
+            .select()
+            .single();
 
-          this.logger.log(`Depósito ${txid} confirmado como pago.`);
+          if (cicloError) {
+            this.logger.error(`Erro ao criar ciclo para depósito ${txid}:`, cicloError);
+            continue;
+          }
+
+          // Cria um registro no extrato (type 0 = depósito)
+          await supabase.from('extrato').insert([
+            {
+              profile_id: deposit.profile_id,
+              ciclo_id: ciclo.id,
+              type: 0,
+              value: deposit.value,
+              status: 1,
+            },
+          ]);
+
+          this.logger.log(`✅ Depósito ${txid} confirmado como pago e ciclo/extrato criados.`);
         } else {
           // Verifica se passou mais de 24 horas desde a criação
           const createdAt = new Date(created_at);
