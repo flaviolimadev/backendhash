@@ -63,4 +63,6 @@ export class DepositService {
       throw new Error('Erro ao gerar PIX');
     }
   }
+
+  
 }

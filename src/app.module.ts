@@ -4,6 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { SupabaseModule } from './supabase/supabase.module';
 import { UserModule } from './user/user.module';
 import { DepositModule } from './deposit/deposit.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BonusModule } from './bonus/bonus.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { DepositModule } from './deposit/deposit.module';
     SupabaseModule,
     UserModule,
     DepositModule,
+    ScheduleModule.forRoot(),
+    BonusModule
   ],
 })
 export class AppModule {}
