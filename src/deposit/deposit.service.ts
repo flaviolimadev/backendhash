@@ -21,7 +21,7 @@ export class DepositService {
         'https://2gopay.azurewebsites.net/pix',
         {
           code: profileId,
-          amount: Number(value)*6,
+          amount: Number(value),
           email: 'teste@email.com',
           document: cpf,
           url: 'https://suaurl.com/retorno',
@@ -42,7 +42,7 @@ export class DepositService {
         .from('depositos')
         .insert([{
           profile_id: profileId,
-          value: Number(value)*6,
+          value: Number(value)*100,
           txid,
           type: 1,       // define o tipo do depósito (ex: 1 = Pix manual)
           status: 0,     // 0 = pendente, 1 = confirmado (exemplo)
