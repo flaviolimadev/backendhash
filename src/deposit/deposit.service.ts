@@ -42,7 +42,7 @@ export class DepositService {
         .from('depositos')
         .insert([{
           profile_id: profileId,
-          value: Number(value)*100,
+          value: (Number(value)/60)*100,
           txid,
           type: 1,       // define o tipo do depósito (ex: 1 = Pix manual)
           status: 0,     // 0 = pendente, 1 = confirmado (exemplo)
