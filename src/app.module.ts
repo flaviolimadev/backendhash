@@ -6,6 +6,7 @@ import { UserModule } from './user/user.module';
 import { DepositModule } from './deposit/deposit.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BonusModule } from './bonus/bonus.module';
+import { ReferralsModule } from './referrals/referrals.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { BonusModule } from './bonus/bonus.module';
     UserModule,
     DepositModule,
     ScheduleModule.forRoot(),
-    BonusModule
+    BonusModule,
+    ReferralsModule
   ],
 })
 export class AppModule {}
