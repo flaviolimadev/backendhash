@@ -37,16 +37,17 @@ export class DepositService {
 
       const { txid, status, pixCopiaECola, qrCode } = response.data;
 
-      // 🟢 Inserção ajustada ao schema da tabela 'depositos'
+      const amount = Math.round((Number(value) / 5.73) * 100); // converte para centavos e arredonda
+
       const { error } = await this.supabaseService.getClient()
         .from('depositos')
         .insert([{
           profile_id: profileId,
-          value: (Number(value)/60)*100,
+          value: amount, // agora garantido como número inteiro (ex: 1450)
           txid,
-          type: 1,       // define o tipo do depósito (ex: 1 = Pix manual)
-          status: 0,     // 0 = pendente, 1 = confirmado (exemplo)
-          bonus: 0       // se for depósito com bônus, pode controlar aqui
+          type: 1,
+          status: 0,
+          bonus: 0
         }]);
 
       if (error) {
