@@ -7,6 +7,8 @@ import { DepositModule } from './deposit/deposit.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BonusModule } from './bonus/bonus.module';
 import { ReferralsModule } from './referrals/referrals.module';
+import { SaquesModule } from './saques/saques.module';
+import { CronService } from './cron/cron.service';
 
 @Module({
   imports: [
@@ -18,7 +20,9 @@ import { ReferralsModule } from './referrals/referrals.module';
     DepositModule,
     ScheduleModule.forRoot(),
     BonusModule,
-    ReferralsModule
+    ReferralsModule,
+    SaquesModule
   ],
+  providers: [CronService],
 })
 export class AppModule {}
