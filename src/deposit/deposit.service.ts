@@ -37,8 +37,6 @@ export class DepositService {
 
       const { txid, status, pixCopiaECola, qrCode } = response.data;
 
-      return response.data;
-
       const amount = Math.round((Number(value) / 5.73) * 100); // converte para centavos e arredonda
 
       const { error } = await this.supabaseService.getClient()
