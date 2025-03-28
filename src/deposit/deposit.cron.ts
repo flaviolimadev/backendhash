@@ -22,7 +22,6 @@ export class DepositCronService {
   async checkPendingPixDeposits() {
     this.logger.log('Verificando depósitos PIX pendentes...');
 
-    // Buscar depósitos com type = 1 (PIX) e status = 0 (pendente)
     const { data: deposits, error } = await this.supabaseService.getClient()
       .from('depositos')
       .select('*')
@@ -40,10 +39,9 @@ export class DepositCronService {
     }
 
     for (const deposit of deposits) {
-      try {
-        const { txid, created_at } = deposit;
+      const { txid, created_at } = deposit;
 
-        // Consulta a API da 2GoPay
+      try {
         const response = await axios.get<PixStatusResponse>(`https://2gopay.azurewebsites.net/pix/${txid}`, {
           headers: {
             accept: '*/*',
@@ -56,13 +54,11 @@ export class DepositCronService {
         if (status === 'pago') {
           const supabase = this.supabaseService.getClient();
 
-          // Atualiza o status do depósito para 1 (concluído)
           await supabase
             .from('depositos')
             .update({ status: 1 })
             .eq('txid', txid);
 
-          // Cria o ciclo
           const { data: ciclo, error: cicloError } = await supabase
             .from('ciclos')
             .insert([
@@ -81,20 +77,16 @@ export class DepositCronService {
             continue;
           }
 
-          // Cria um registro no extrato (type 0 = depósito)
-          await supabase.from('extrato').insert([
-            {
-              profile_id: deposit.profile_id,
-              ciclo_id: ciclo.id,
-              type: 0,
-              value: deposit.value,
-              status: 1,
-            },
-          ]);
+          await supabase.from('extrato').insert([{
+            profile_id: deposit.profile_id,
+            ciclo_id: ciclo.id,
+            type: 0,
+            value: deposit.value,
+            status: 1,
+          }]);
 
           this.logger.log(`✅ Depósito ${txid} confirmado como pago e ciclo/extrato criados.`);
         } else {
-          // Verifica se passou mais de 1 hora desde a criação
           const createdAt = new Date(created_at);
           const now = new Date();
           const diffInHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
@@ -108,8 +100,13 @@ export class DepositCronService {
             this.logger.warn(`Depósito ${txid} removido por expiração (>1h).`);
           }
         }
-      } catch (err) {
-        this.logger.error(`Erro ao verificar depósito ${deposit.txid}:`, err);
+      } catch (err: any) {
+        if (err.response?.status === 503) {
+          this.logger.warn(`⚠️ API da 2GoPay indisponível para o txid ${txid}. Tentará novamente mais tarde.`);
+        } else {
+          this.logger.error(`Erro inesperado ao verificar depósito ${txid}:`, err.message || err);
+        }
+        continue; // continua o loop mesmo com erro
       }
     }
   }
