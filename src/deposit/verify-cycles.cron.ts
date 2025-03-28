@@ -16,11 +16,12 @@ export class VerifyMissingCyclesCron {
 
     const supabase = this.supabaseService.getClient();
 
-    // Busca depósitos com status 1 ou 2
+    // Busca depósitos com status 1 ou 2 e checked_cicle = 0
     const { data: deposits, error } = await supabase
       .from('depositos')
       .select('*')
-      .in('status', [1, 2]);
+      .in('status', [1, 2])
+      .eq('checked_cicle', 0);
 
     if (error) {
       this.logger.error('Erro ao buscar depósitos:', error);
@@ -74,9 +75,21 @@ export class VerifyMissingCyclesCron {
             },
           ]);
 
+          // Marca o depósito como ciclo verificado
+          await supabase
+            .from('depositos')
+            .update({ checked_cicle: 1 })
+            .eq('id', deposit.id);
+
           this.logger.log(`✅ Ciclo criado para depósito ${deposit.id} e registrado no extrato.`);
         } else {
-          this.logger.log(`✔️ Depósito ${deposit.id} já possui ciclo.`);
+          // Já existe ciclo, apenas marca como verificado
+          await supabase
+            .from('depositos')
+            .update({ checked_cicle: 1 })
+            .eq('id', deposit.id);
+
+          this.logger.log(`✔️ Depósito ${deposit.id} já possui ciclo. Marcado como verificado.`);
         }
       } catch (err) {
         this.logger.error(`Erro geral ao processar depósito ${deposit.id}:`, err);

@@ -36,7 +36,7 @@ export class SaquesService {
     }
 
     const taxa = value * 0.04;
-    const valorFinal = value - taxa;
+    const valorFinal = Math.floor(value - taxa); // ou Math.round
 
     // Atualizar saldo
     const { error: updateError } = await this.supabase

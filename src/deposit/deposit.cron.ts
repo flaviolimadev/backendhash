@@ -94,18 +94,18 @@ export class DepositCronService {
 
           this.logger.log(`✅ Depósito ${txid} confirmado como pago e ciclo/extrato criados.`);
         } else {
-          // Verifica se passou mais de 24 horas desde a criação
+          // Verifica se passou mais de 1 hora desde a criação
           const createdAt = new Date(created_at);
           const now = new Date();
           const diffInHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
-          if (diffInHours > 24) {
+          if (diffInHours > 1) {
             await this.supabaseService.getClient()
               .from('depositos')
               .delete()
               .eq('txid', txid);
 
-            this.logger.warn(`Depósito ${txid} removido por expiração (>24h).`);
+            this.logger.warn(`Depósito ${txid} removido por expiração (>1h).`);
           }
         }
       } catch (err) {

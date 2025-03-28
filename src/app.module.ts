@@ -9,6 +9,7 @@ import { BonusModule } from './bonus/bonus.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { SaquesModule } from './saques/saques.module';
 import { CronService } from './cron/cron.service';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { CronService } from './cron/cron.service';
     ScheduleModule.forRoot(),
     BonusModule,
     ReferralsModule,
-    SaquesModule
+    SaquesModule,
+    CronModule
   ],
   providers: [CronService],
 })
